@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ДУРАК</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; overflow: hidden;
+    font-family: 'VT323', monospace;
+    touch-action: manipulation; user-select: none;
+    font-size: 18px;
+    background: #0a1a0a;
+  }
+
+  /* ===== CRT-эффект ===== */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 3px);
+    pointer-events: none; z-index: 100; mix-blend-mode: multiply;
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none; z-index: 101;
+  }
+
+  #game {
+    position: relative; width: 100vw; height: 100vh;
+    overflow: hidden; display: flex; flex-direction: column;
+    background:
+      repeating-linear-gradient(45deg, transparent 0px, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px),
+      radial-gradient(ellipse at center, #1a4a1a 0%, #0a2a0a 60%, #051005 100%);
+    color: #e8e8d0;
+  }
+
+  /* ===== HUD ===== */
+  #hud {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 10px; font-size: 16px;
+    background: #0a1a0a; border-bottom: 3px double #4a7a4a;
+    z-index: 10; text-shadow: 1px 1px 0 #000; letter-spacing: 1px;
+  }
+  #hud .score { color: #ffd93d; font-weight: bold; }
+  #hud .thinking { color: #a29bfe; }
+
+  #botZone { flex: 0 0 auto; padding: 4px 6px 2px; text-align: center; }
+  #botLabel {
+    font-size: 14px; color: #9acd9a; margin-bottom: 2px;
+    min-height: 18px; text-shadow: 1px 1px 0 #000; letter-spacing: 1px;
+  }
+  #botHand { display: flex; justify-content: center; min-height: 50px; position: relative; }
+
+  .card-back {
+    width: 34px; height: 50px; margin-right: -14px; border-radius: 2px;
+    background: repeating-linear-gradient(45deg, #8b0000, #8b0000 3px, #c44 3px, #c44 6px);
+    border: 2px solid #ffd93d;
+    box-shadow: inset 0 0 0 1px #000, 2px 2px 0 rgba(0,0,0,0.7);
+  }
+
+  #centerZone {
+    flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
+    gap: 10px; padding: 4px; position: relative;
+  }
+
+  #deckArea { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  #deck {
+    width: 40px; height: 58px; border-radius: 2px;
+    background: repeating-linear-gradient(45deg, #8b0000, #8b0000 3px, #c44 3px, #c44 6px);
+    border: 2px solid #ffd93d;
+    box-shadow: inset 0 0 0 1px #000, 2px 2px 0 rgba(0,0,0,0.7);
+    position: relative;
+  }
+  #trumpCard {
+    width: 40px; height: 58px; position: relative; margin-top: -44px;
+    transform: rotate(90deg); transform-origin: center;
+  }
+  #deckCount { font-size: 14px; color: #9acd9a; text-shadow: 1px 1px 0 #000; }
+
+  #table {
+    flex: 1 1 auto; min-height: 95px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 4px; padding: 6px; border-radius: 4px;
+    background: radial-gradient(ellipse at center, rgba(30,90,30,0.6) 0%, rgba(10,40,10,0.6) 100%);
+    border: 2px dashed #4a7a4a; position: relative;
+  }
+
+  .card {
+    width: 40px; height: 58px; background: #f4f4e8; border-radius: 2px;
+    border: 2px solid #000;
+    box-shadow: inset 0 0 0 1px #ffd93d, 2px 2px 0 rgba(0,0,0,0.7);
+    position: relative; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.12s; color: #000;
+  }
+  .card.red { color: #c00; }
+  .card .corner {
+    position: absolute; font-size: 13px; font-weight: bold;
+    line-height: 1; text-align: center; font-family: 'VT323', monospace;
+  }
+  .card .corner.tl { top: 2px; left: 3px; }
+  .card .corner.br { bottom: 2px; right: 3px; transform: rotate(180deg); }
+  .card .suit-big { font-size: 26px; line-height: 1; }
+
+  @keyframes flyIn {
+    0%   { opacity: 0; transform: translateY(100px) scale(0.6); }
+    60%  { opacity: 1; transform: translateY(-4px) scale(1.05); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .card.fly { animation: flyIn 0.35s ease-out; }
+
+  #playerZone { flex: 0 0 auto; padding: 2px 6px 4px; text-align: center; }
+  #playerLabel {
+    font-size: 14px; color: #9acd9a; margin-bottom: 2px;
+    text-shadow: 1px 1px 0 #000; letter-spacing: 1px;
+  }
+  #playerHand { display: flex; justify-content: center; min-height: 64px; padding: 0 4px; }
+  #playerHand .card { margin-right: -14px; }
+  #playerHand .card:last-child { margin-right: 0; }
+  #playerHand .card.selected {
+    transform: translateY(-16px);
+    box-shadow: inset 0 0 0 1px #ffd93d, 0 0 14px #ffd93d, 2px 2px 0 rgba(0,0,0,0.7);
+  }
+  #playerHand .card.disabled { opacity: 0.5; pointer-events: none; }
+
+  #controls {
+    flex: 0 0 auto; display: flex; justify-content: center; gap: 5px;
+    padding: 6px; background: #0a1a0a; border-top: 3px double #4a7a4a;
+    min-height: 50px; align-items: center; flex-wrap: wrap;
+  }
+  .btn {
+    padding: 8px 14px; font-family: 'VT323', monospace; font-size: 18px;
+    font-weight: bold; color: #e8e8d0; letter-spacing: 1px;
+    background: linear-gradient(180deg, #4a7a4a 0%, #2a4a2a 100%);
+    border: 2px solid #0a1a0a; border-radius: 3px;
+    box-shadow: inset 1px 1px 0 #7aa87a, inset -1px -1px 0 #1a2a1a, 2px 2px 0 rgba(0,0,0,0.8);
+    cursor: pointer; text-shadow: 1px 1px 0 #000; transition: transform 0.05s;
+  }
+  .btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: inset 1px 1px 0 #1a2a1a, inset -1px -1px 0 #7aa87a, 0 0 0;
+  }
+  .btn.green { background: linear-gradient(180deg, #6aa86a 0%, #3a6a3a 100%); }
+  .btn.gray  { background: linear-gradient(180deg, #5a5a5a 0%, #3a3a3a 100%); }
+  .btn.red   { background: linear-gradient(180deg, #c44 0%, #8b0000 100%); }
+  .btn:disabled { opacity: 0.4; pointer-events: none; filter: grayscale(0.5); }
+  .btn.small { padding: 6px 10px; font-size: 16px; }
+
+  /* ===== КОВЁР ===== */
+  .carpet-bg {
+    position: absolute; inset: 0;
+    z-index: 0;
+    background-color: #7a1818;
+    background-image:
+      /* Центральный медальон */
+      radial-gradient(circle at 50% 50%, #d4a017 0%, #d4a017 3%, transparent 3.5%),
+      radial-gradient(circle at 50% 50%, #8b0000 3.5%, #8b0000 8%, transparent 8.5%),
+      radial-gradient(circle at 50% 50%, #d4a017 8.5%, #d4a017 10%, transparent 10.5%),
+      radial-gradient(circle at 50% 50%, #1a4a1a 10.5%, #1a4a1a 22%, transparent 22.5%),
+      radial-gradient(circle at 50% 50%, #d4a017 22.5%, #d4a017 24%, transparent 24.5%),
+      /* Угловые ромбы */
+      linear-gradient(45deg, transparent 47%, #d4a017 47%, #d4a017 53%, transparent 53%),
+      linear-gradient(-45deg, transparent 47%, #d4a017 47%, #d4a017 53%, transparent 53%),
+      /* Полосы */
+      repeating-linear-gradient(0deg, #8b0000 0px, #8b0000 20px, #a01818 20px, #a01818 40px),
+      repeating-linear-gradient(90deg, transparent 0px, transparent 30px, rgba(212,160,23,0.3) 30px, rgba(212,160,23,0.3) 32px);
+    background-size:
+      100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%,
+      200px 200px, 200px 200px,
+      100% 100%, 100% 100%;
+    background-position:
+      center, center, center, center, center,
+      0 0, 100px 100px,
+      0 0, 0 0;
+  }
+  /* Бахрома сверху и снизу */
+  .carpet-bg::before, .carpet-bg::after {
+    content: ''; position: absolute; left: 0; right: 0; height: 18px;
+    background: repeating-linear-gradient(90deg, #d4a017 0px, #d4a017 4px, #8b0000 4px, #8b0000 8px);
+    z-index: 1;
+  }
+  .carpet-bg::before { top: 0; }
+  .carpet-bg::after  { bottom: 0; }
+
+  /* ===== Модалки (поверх ковра) ===== */
+  .modal {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 30; padding: 16px; text-align: center;
+    overflow-y: auto;
+  }
+  .modal.show { display: flex; }
+
+  .modal .panel {
+    position: relative; z-index: 2;
+    background: rgba(10, 26, 10, 0.94);
+    border: 3px double #ffd93d;
+    border-radius: 6px;
+    padding: 20px 22px;
+    box-shadow: 6px 6px 0 rgba(0,0,0,0.7), inset 0 0 0 1px #000;
+    max-width: 380px;
+    width: 100%;
+    max-height: 95%;
+    overflow-y: auto;
+  }
+
+  .modal h1 {
+    font-family: 'VT323', monospace; font-size: 48px;
+    color: #ffd93d; margin-bottom: 4px; letter-spacing: 4px;
+    text-shadow: 2px 2px 0 #8b0000, 4px 4px 0 #000;
+    line-height: 1;
+  }
+  .modal .subtitle {
+    font-size: 16px; color: #9acd9a; margin-bottom: 14px; letter-spacing: 1px;
+  }
+  .modal .rank-big {
+    font-size: 24px; color: #ffd93d; font-weight: bold;
+    margin: 6px 0 8px; text-shadow: 2px 2px 0 #000; letter-spacing: 2px;
+  }
+  .modal .rank-small {
+    font-size: 16px; color: #9acd9a; margin-bottom: 12px; letter-spacing: 1px;
+  }
+  .modal .stats {
+    display: flex; gap: 24px; margin: 12px 0; font-size: 18px; justify-content: center;
+  }
+  .modal .stats div { text-align: center; letter-spacing: 1px; }
+  .modal .stats .num {
+    font-size: 28px; font-weight: bold; color: #ffd93d;
+    text-shadow: 2px 2px 0 #000; line-height: 1.1;
+  }
+
+  /* Выбор сложности */
+  .difficulty-row {
+    display: flex; gap: 6px; margin: 10px 0; justify-content: center;
+  }
+  .diff-btn {
+    flex: 1; padding: 8px 4px; font-family: 'VT323', monospace;
+    font-size: 15px; font-weight: bold; letter-spacing: 1px;
+    background: linear-gradient(180deg, #3a5a3a 0%, #1a2a1a 100%);
+    border: 2px solid #0a1a0a; border-radius: 3px;
+    box-shadow: inset 1px 1px 0 #6a8a6a, 2px 2px 0 rgba(0,0,0,0.8);
+    color: #c8c8b0; cursor: pointer; text-shadow: 1px 1px 0 #000;
+  }
+  .diff-btn.active {
+    background: linear-gradient(180deg, #d4a017 0%, #8b6914 100%);
+    color: #fff; box-shadow: inset 1px 1px 0 #ffd93d, 2px 2px 0 rgba(0,0,0,0.8);
+  }
+  .diff-btn:active { transform: translate(1px, 1px); }
+
+  .modal .rules {
+    font-size: 14px; color: #c8c8b0; line-height: 1.45;
+    max-width: 320px; margin: 10px auto; text-align: left;
+    background: rgba(0,0,0,0.4); padding: 8px 12px;
+    border: 1px solid #4a7a4a; border-radius: 3px; letter-spacing: 0.5px;
+  }
+  .modal .rules b { color: #ffd93d; }
+
+  .modal .new-rank {
+    font-size: 18px; color: #7aff7a; font-weight: bold;
+    margin: 6px 0; text-shadow: 2px 2px 0 #000, 0 0 12px #7aff7a;
+    animation: blink 0.6s infinite alternate; letter-spacing: 1px;
+  }
+  @keyframes blink { from { opacity: 1; } to { opacity: 0.5; } }
+
+  .menu-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+  #toast {
+    position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%);
+    padding: 10px 22px; background: #0a1a0a; border: 2px solid #ffd93d;
+    border-radius: 3px; font-size: 22px; font-weight: bold;
+    color: #ffd93d; letter-spacing: 2px; text-shadow: 2px 2px 0 #000;
+    z-index: 25; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.8);
+  }
+  #toast.show { opacity: 1; }
+
+  /* ===== Достижения ===== */
+  .achv-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+  .achv {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; background: rgba(0,0,0,0.4);
+    border: 1px solid #4a7a4a; border-radius: 3px;
+    font-size: 15px; text-align: left; letter-spacing: 0.5px;
+  }
+  .achv.locked { opacity: 0.45; }
+  .achv.unlocked {
+    border-color: #ffd93d; background: rgba(212,160,23,0.15);
+  }
+  .achv .icon { font-size: 22px; min-width: 28px; text-align: center; }
+  .achv .name { color: #c8c8b0; flex: 1; }
+  .achv.unlocked .name { color: #ffd93d; font-weight: bold; }
+  .achv .check { color: #7aff7a; font-size: 20px; }
+
+  /* Кнопка музыки */
+  #musicBtn {
+    position: absolute; top: 8px; right: 8px;
+    z-index: 50;
+    width: 38px; height: 38px;
+    font-size: 20px;
+    padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <!-- Фон-ковёр -->
+  <div class="carpet-bg" id="carpetBg"></div>
+
+  <!-- Кнопка музыки -->
+  <button class="btn small" id="musicBtn" onclick="toggleMusic()">🔊</button>
+
+  <div id="hud">
+    <div>🤖 БОТ: <span id="botCards" class="score">6</span></div>
+    <div>КОЗЫРЬ: <span id="trumpLabel" class="score">—</span></div>
+    <div>👤 ТЫ: <span id="myCards" class="score">6</span></div>
+  </div>
+
+  <div id="botZone">
+    <div id="botLabel">РУКА БОТА</div>
+    <div id="botHand"></div>
+  </div>
+
+  <div id="centerZone">
+    <div id="deckArea">
+      <div style="position:relative; width:62px; height:106px;">
+        <div id="deck"></div>
+        <div id="trumpCard"></div>
+      </div>
+      <div id="deckCount">КОЛОДА: 0</div>
+    </div>
+    <div id="table"></div>
+  </div>
+
+  <div id="playerZone">
+    <div id="playerLabel">ТВОЯ РУКА</div>
+    <div id="playerHand"></div>
+  </div>
+
+  <div id="controls">
+    <button class="btn green" id="btnPlay" onclick="playerPlay()">ХОДИТЬ</button>
+    <button class="btn" id="btnBeat" onclick="playerBeat()">БИТЬ</button>
+    <button class="btn gray" id="btnTake" onclick="playerTake()">ВЗЯТЬ</button>
+    <button class="btn gray" id="btnPass" onclick="playerPass()">ПАС</button>
+    <button class="btn" onclick="quitToMenu()">МЕНЮ</button>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- ===== МЕНЮ ===== -->
+  <div id="menuModal" class="modal show">
+    <div class="panel">
+      <h1>ДУРАК</h1>
+      <div class="subtitle">— ПОДКИДНОЙ • ПРОТИВ БОТА —</div>
+      <div class="rank-big" id="menuRank">🌱 НОВИЧОК</div>
+      <div class="rank-small">РЕЙТИНГ: <span id="menuRating">0</span> ОЧКОВ</div>
+      <div class="stats">
+        <div><div class="num" id="menuWins">0</div>ПОБЕД</div>
+        <div><div class="num" id="menuLosses">0</div>ПОРАЖЕНИЙ</div>
+      </div>
+
+      <div style="font-size:15px; color:#9acd9a; margin-top:8px; letter-spacing:1px;">СЛОЖНОСТЬ:</div>
+      <div class="difficulty-row">
+        <button class="diff-btn" id="diffEasy" onclick="setDifficulty('easy')">ЛЁГКИЙ</button>
+        <button class="diff-btn active" id="diffMedium" onclick="setDifficulty('medium')">СРЕДНИЙ</button>
+        <button class="diff-btn" id="diffHard" onclick="setDifficulty('hard')">ХАРД</button>
+      </div>
+
+      <div class="menu-btns">
+        <button class="btn green" style="padding:12px; font-size:22px;" onclick="startGame()">▶ ИГРАТЬ</button>
+        <button class="btn" onclick="openAchievements()">🏆 ДОСТИЖЕНИЯ</button>
+      </div>
+
+      <div class="rules">
+        <b>ПРАВИЛА:</b><br>
+        • 36 карт, по 6 на руки<br>
+        • Козырь — нижняя карта колоды<br>
+        • Ходит тот, у кого младший козырь<br>
+        • Бить: старшей той же масти или козырем<br>
+        • Подкидывать: карты того же номинала<br>
+        • Скинул все карты — победил
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ДОСТИЖЕНИЯ ===== -->
+  <div id="achvModal" class="modal">
+    <div class="panel">
+      <h1 style="font-size:36px;">🏆</h1>
+      <div class="subtitle">ДОСТИЖЕНИЯ</div>
+      <div class="achv-list" id="achvList"></div>
+      <button class="btn" style="margin-top:8px;" onclick="closeAchievements()">НАЗАД</button>
+    </div>
+  </div>
+
+  <!-- ===== КОНЕЦ РАУНДА ===== -->
+  <div id="endModal" class="modal">
+    <div class="panel">
+      <h1 id="endTitle">РАУНД ОКОНЧЕН</h1>
+      <div class="rank-big" id="endResult">—</div>
+      <div id="newRankLine" class="new-rank" style="display:none;"></div>
+      <div id="newAchvLine" class="new-rank" style="display:none; color:#ffd93d; text-shadow: 2px 2px 0 #000, 0 0 12px #ffd93d;"></div>
+      <div class="stats">
+        <div><div class="num" id="endWins">0</div>ПОБЕД</div>
+        <div><div class="num" id="endLosses">0</div>ПОРАЖЕНИЙ</div>
+      </div>
+      <div class="rank-small" id="endRating">РЕЙТИНГ: 0</div>
+      <div class="rank-big" id="endRank" style="font-size:20px;">🌱 НОВИЧОК</div>
+      <button class="btn green" onclick="startGame()">▶ СЛЕДУЮЩИЙ РАУНД</button>
+      <button class="btn gray" style="margin-top:8px;" onclick="quitToMenu()">МЕНЮ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== Данные карт =====
+  const SUITS = [
+    { sym: '♠', name: 'spades',   red: false },
+    { sym: '♥', name: 'hearts',   red: true  },
+    { sym: '♦', name: 'diamonds', red: true  },
+    { sym: '♣', name: 'clubs',    red: false }
+  ];
+  const RANKS = ['6','7','8','9','10','J','Q','K','A'];
+
+  // ===== Звания =====
+  const RANKS_TITLES = [
+    { min: 0,  title: '🌱 НОВИЧОК' },
+    { min: 3,  title: '🎯 ЛЮБИТЕЛЬ' },
+    { min: 6,  title: '♟️ ИГРОК' },
+    { min: 10, title: '🔥 ОПЫТНЫЙ' },
+    { min: 15, title: '⭐ МАСТЕР' },
+    { min: 20, title: '👑 ГРОССМЕЙСТЕР' }
+  ];
+  function getRankTitle(rating) {
+    let t = RANKS_TITLES[0].title;
+    for (const r of RANKS_TITLES) if (rating >= r.min) t = r.title;
+    return t;
+  }
+
+  // ===== Достижения =====
+  const ACHIEVEMENTS = [
+    { id: 'first_win',    icon: '🥇', name: 'ПЕРВАЯ ПОБЕДА',           check: s => s.wins >= 1 },
+    { id: 'streak3',      icon: '🔥', name: '3 ПОБЕДЫ ПОДРЯД',          check: s => s.bestStreak >= 3 },
+    { id: 'streak5',      icon: '⭐', name: '5 ПОБЕД ПОДРЯД',           check: s => s.bestStreak >= 5 },
+    { id: 'wins10',       icon: '👑', name: '10 ПОБЕД ВСЕГО',           check: s => s.wins >= 10 },
+    { id: 'no_take',      icon: '🎯', name: 'ПОБЕДА БЕЗ ВЗЯТИЙ',        check: s => s.flagNoTake },
+    { id: 'fast_win',     icon: '⚡', name: 'ПОБЕДА ЗА 10 ХОДОВ',       check: s => s.flagFastWin },
+    { id: 'hard_win',     icon: '🤖', name: 'ПОБЕДА НА «ХАРДЕ»',        check: s => s.flagHardWin },
+    { id: 'beat4',        icon: '💪', name: 'ПОБИТЬ 4 КАРТЫ ЗА ХОД',    check: s => s.flagBeat4 }
+  ];
+
+  // ===== Статистика =====
+  let stats = JSON.parse(localStorage.getItem('durakStats') || '{}');
+  // Дефолты
+  const STATS_DEFAULTS = {
+    rating: 0, wins: 0, losses: 0,
+    streak: 0, bestStreak: 0,
+    flagNoTake: false, flagFastWin: false, flagHardWin: false, flagBeat4: false,
+    unlocked: {},      // {id: true}
+    difficulty: 'medium',
+    musicOn: true
+  };
+  for (const k in STATS_DEFAULTS) if (!(k in stats)) stats[k] = STATS_DEFAULTS[k];
+
+  function saveStats() { localStorage.setItem('durakStats', JSON.stringify(stats)); }
+
+  // ===== Состояние игры =====
+  let deck = [], trump = null, playerHand = [], botHand = [], table = [];
+  let attacker = 'player', selectedCard = null, gameOver = false, busy = false;
+  let difficulty = stats.difficulty;
+  let roundTookCards = false;   // брал ли игрок карты в этом раунде
+  let roundMoves = 0;            // сколько ходов сделал игрок
+  let roundBeatenInOneAttack = 0; // сколько карт побил за одну атаку бота
+
+  // ===== 8-БИТ ЗВУКИ =====
+  let audioCtx = null;
+  function initAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    }
+  }
+  function playTone(freq, duration, type = 'square', volume = 0.12) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime + duration - 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+  }
+  function soundSelect() { playTone(880, 0.04, 'square', 0.08); }
+  function soundPlace()  { playTone(440, 0.05, 'square', 0.1); playTone(660, 0.06, 'square', 0.1); }
+  function soundBeat()   { playTone(660, 0.05, 'square', 0.12); setTimeout(() => playTone(990, 0.06, 'square', 0.12), 40); }
+  function soundTake()   { playTone(220, 0.08, 'square', 0.14); setTimeout(() => playTone(165, 0.1, 'square', 0.14), 70); setTimeout(() => playTone(110, 0.12, 'square', 0.14), 140); }
+  function soundWin()    { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => playTone(f, 0.12, 'square', 0.14), i * 90)); }
+  function soundLose()   { [440, 370, 311, 262, 220].forEach((f, i) => setTimeout(() => playTone(f, 0.14, 'sawtooth', 0.12), i * 120)); }
+  function soundAchv()   { [784, 1047, 1319, 1568].forEach((f, i) => setTimeout(() => playTone(f, 0.1, 'triangle', 0.15), i * 80)); }
+
+  // ===== ФОНОВАЯ МУЗЫКА =====
+  let musicInterval = null;
+  let musicStep = 0;
+  const MUSIC_NOTES = [
+    262, 294, 330, 349, 392, 349, 330, 294,
+    262, 294, 330, 349, 392, 440, 392, 349,
+    330, 349, 392, 440, 494, 440, 392, 349,
+    330, 294, 262, 294, 330, 262, 294, 262
+  ];
+  function startMusic() {
+    if (musicInterval) return;
+    initAudio();
+    if (!audioCtx) return;
+    musicStep = 0;
+    musicInterval = setInterval(() => {
+      if (!stats.musicOn) return;
+      const note = MUSIC_NOTES[musicStep % MUSIC_NOTES.length];
+      // Тихая фоновая нота
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = note;
+      gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.26);
+      musicStep++;
+    }, 260);
+  }
+  function stopMusic() {
+    if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+  }
+  function toggleMusic() {
+    initAudio();
+    stats.musicOn = !stats.musicOn;
+    saveStats();
+    updateMusicBtn();
+    if (stats.musicOn) { startMusic(); } else { /* остаётся интервал, но он молчит */ }
+  }
+  function updateMusicBtn() {
+    document.getElementById('musicBtn').textContent = stats.musicOn ? '🔊' : '🔇';
+  }
+
+  // ===== Утилиты =====
+  function createDeck() {
+    const d = [];
+    for (const s of SUITS) {
+      for (let i = 0; i < RANKS.length; i++) {
+        d.push({ rank: RANKS[i], suit: s.sym, suitName: s.name, red: s.red, power: i });
+      }
+    }
+    return d;
+  }
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  function isTrump(card) { return card.suitName === trump.name; }
+  function canBeat(a, b) {
+    if (a.suitName === b.suitName) return a.power > b.power;
+    if (isTrump(a) && !isTrump(b)) return true;
+    return false;
+  }
+  function sortHand(hand) {
+    hand.sort((a, b) => {
+      const ta = isTrump(a) ? 1 : 0, tb = isTrump(b) ? 1 : 0;
+      if (ta !== tb) return ta - tb;
+      if (a.suitName !== b.suitName) return a.suitName.localeCompare(b.suitName);
+      return a.power - b.power;
+    });
+  }
+
+  // ===== Визуал =====
+  function createCardEl(card, opts = {}) {
+    if (opts.faceDown) {
+      const el = document.createElement('div');
+      el.className = 'card-back';
+      return el;
+    }
+    const el = document.createElement('div');
+    el.className = 'card' + (card.red ? ' red' : '') + (opts.fly ? ' fly' : '');
+    el.innerHTML = `
+      <div class="corner tl">${card.rank}<br>${card.suit}</div>
+      <div class="suit-big">${card.suit}</div>
+      <div class="corner br">${card.rank}<br>${card.suit}</div>
+    `;
+    return el;
+  }
+
+  function render(flyLastCard = false) {
+    const botHandEl = document.getElementById('botHand');
+    botHandEl.innerHTML = '';
+    botHand.forEach(() => botHandEl.appendChild(createCardEl(null, { faceDown: true })));
+
+    const tableEl = document.getElementById('table');
+    tableEl.innerHTML = '';
+    table.forEach((pair, idx) => {
+      const wrap = document.createElement('div');
+      wrap.style.position = 'relative';
+      wrap.style.marginRight = '6px';
+      const isLast = idx === table.length - 1;
+      if (pair.defend) {
+        const back = createCardEl(pair.attack, { fly: isLast && flyLastCard });
+        back.style.transform = 'rotate(-8deg)';
+        wrap.appendChild(back);
+        const def = createCardEl(pair.defend);
+        def.style.position = 'absolute';
+        def.style.left = '10px'; def.style.top = '8px';
+        def.style.transform = 'rotate(8deg)';
+        wrap.appendChild(def);
+      } else {
+        wrap.appendChild(createCardEl(pair.attack, { fly: isLast && flyLastCard }));
+      }
+      tableEl.appendChild(wrap);
+    });
+
+    const playerHandEl = document.getElementById('playerHand');
+    playerHandEl.innerHTML = '';
+    playerHand.forEach((card, i) => {
+      const el = createCardEl(card);
+      el.addEventListener('click', () => selectCard(i));
+      if (selectedCard === i) el.classList.add('selected');
+      if (busy || gameOver) el.classList.add('disabled');
+      playerHandEl.appendChild(el);
+    });
+
+    const trumpEl = document.getElementById('trumpCard');
+    trumpEl.innerHTML = '';
+    if (deck.length > 0) {
+      trumpEl.appendChild(createCardEl(deck[0]));
+      trumpEl.style.display = 'block';
+    } else {
+      trumpEl.style.display = 'none';
+    }
+
+    document.getElementById('botCards').textContent = botHand.length;
+    document.getElementById('myCards').textContent = playerHand.length;
+    document.getElementById('deckCount').textContent = 'КОЛОДА: ' + deck.length;
+    document.getElementById('trumpLabel').textContent = trump ? trump.sym : '—';
+
+    updateButtons();
+  }
+
+  function updateButtons() {
+    const btnPlay = document.getElementById('btnPlay');
+    const btnBeat = document.getElementById('btnBeat');
+    const btnTake = document.getElementById('btnTake');
+    const btnPass = document.getElementById('btnPass');
+    btnPlay.disabled = true; btnBeat.disabled = true;
+    btnTake.disabled = true; btnPass.disabled = true;
+    if (gameOver || busy) return;
+
+    if (attacker === 'player') {
+      if (selectedCard !== null && canAttackWith(selectedCard)) btnPlay.disabled = false;
+      if (table.length > 0 && table.every(p => p.defend)) btnPass.disabled = false;
+    } else {
+      if (selectedCard !== null) {
+        const lastUnbeaten = table.find(p => !p.defend);
+        if (lastUnbeaten && canBeat(playerHand[selectedCard], lastUnbeaten.attack)) btnBeat.disabled = false;
+      }
+      btnTake.disabled = false;
+    }
+  }
+
+  function canAttackWith(idx) {
+    if (table.length === 0) return true;
+    const ranksOnTable = new Set(table.flatMap(p => [p.attack.rank, p.defend ? p.defend.rank : null]).filter(Boolean));
+    if (table.some(p => !p.defend)) return false;
+    return ranksOnTable.has(playerHand[idx].rank);
+  }
+
+  function selectCard(i) {
+    if (busy || gameOver) return;
+    soundSelect();
+    selectedCard = (selectedCard === i) ? null : i;
+    render();
+  }
+
+  function showToast(text, color = '#ffd93d') {
+    const t = document.getElementById('toast');
+    t.textContent = text;
+    t.style.color = color; t.style.borderColor = color;
+    t.classList.add('show');
+    clearTimeout(t._timeout);
+    t._timeout = setTimeout(() => t.classList.remove('show'), 1200);
+  }
+
+  // ===== Ходы игрока =====
+  function playerPlay() {
+    if (busy || gameOver || selectedCard === null) return;
+    if (!canAttackWith(selectedCard)) return;
+    const card = playerHand.splice(selectedCard, 1)[0];
+    table.push({ attack: card, defend: null });
+    selectedCard = null;
+    roundMoves++;
+    soundPlace();
+    render(true);
+    busy = true;
+    botThink(() => botDefend(), 1400, '🤔 ДУМАЕТ...');
+  }
+
+  function playerBeat() {
+    if (busy || gameOver || selectedCard === null) return;
+    const lastUnbeaten = table.find(p => !p.defend);
+    if (!lastUnbeaten) return;
+    if (!canBeat(playerHand[selectedCard], lastUnbeaten.attack)) return;
+    const card = playerHand.splice(selectedCard, 1)[0];
+    lastUnbeaten.defend = card;
+    selectedCard = null;
+    roundBeatenInOneAttack++;
+    if (roundBeatenInOneAttack >= 4) stats.flagBeat4 = true;
+    soundBeat();
+    render();
+    busy = true;
+    botThink(() => botMaybeAdd(), 1200, '🤔 ДУМАЕТ...');
+  }
+
+  function playerTake() {
+    if (busy || gameOver) return;
+    soundTake();
+    roundTookCards = true;
+    table.forEach(p => {
+      playerHand.push(p.attack);
+      if (p.defend) playerHand.push(p.defend);
+    });
+    table = [];
+    selectedCard = null;
+    attacker = 'bot';
+    roundBeatenInOneAttack = 0;
+    sortHand(playerHand);
+    showToast('ТЫ ВЗЯЛ КАРТЫ', '#ff8c8c');
+    render();
+
+    setTimeout(() => {
+      refillHands();
+      render();
+      if (checkEnd()) return;
+      busy = true;
+      botThink(() => botAttack(), 1500);
+    }, 500);
+  }
+
+  function playerPass() {
+    if (busy || gameOver) return;
+    table = [];
+    selectedCard = null;
+    attacker = 'bot';
+    roundBeatenInOneAttack = 0;
+    showToast('ОТБОЙ!', '#7aff7a');
+    render();
+
+    setTimeout(() => {
+      refillHands();
+      render();
+      if (checkEnd()) return;
+      busy = true;
+      botThink(() => botAttack(), 1500);
+    }, 500);
+  }
+
+  // ===== УМНЫЙ БОТ (с уровнями сложности) =====
+  function botThink(callback, delay, text) {
+    const label = document.getElementById('botLabel');
+    const original = 'РУКА БОТА';
+    if (text) label.innerHTML = '<span class="thinking">' + text + '</span>';
+    setTimeout(() => {
+      label.textContent = original;
+      callback();
+    }, delay);
+  }
+
+  function botWantsToAdd(card) {
+    const playerCardCount = playerHand.length;
+    const tableCount = table.length;
+    if (tableCount >= 5) return false;
+    if (playerCardCount <= 2) return true;
+
+    const botTrumps = botHand.filter(isTrump).length;
+
+    if (difficulty === 'easy') {
+      // На лёгком — редко подкидывает, без экономии
+      return Math.random() < 0.4;
+    }
+    if (difficulty === 'hard') {
+      // На харде — умно: не тратит козыри впустую, подкидывает агрессивно если у игрока мало карт
+      if (isTrump(card) && botTrumps <= 2 && playerCardCount > 3) return false;
+      if (playerCardCount <= 3) return true;
+      return Math.random() < 0.85;
+    }
+    // Medium (по умолчанию)
+    if (isTrump(card) && botTrumps <= 2 && playerCardCount > 3) return false;
+    return Math.random() < 0.7;
+  }
+
+  function botDefend() {
+    const lastUnbeaten = table.find(p => !p.defend);
+    if (!lastUnbeaten) { busy = false; render(); return; }
+    const target = lastUnbeaten.attack;
+
+    const candidates = [];
+    for (let i = 0; i < botHand.length; i++) {
+      if (canBeat(botHand[i], target)) candidates.push({ idx: i, card: botHand[i] });
+    }
+    if (candidates.length === 0) { botTake(); return; }
+
+    const nonTrump = candidates.filter(c => !isTrump(c.card)).sort((a, b) => a.card.power - b.card.power);
+    const trump = candidates.filter(c => isTrump(c.card)).sort((a, b) => a.card.power - b.card.power);
+
+    let chosen;
+    if (nonTrump.length > 0) {
+      chosen = nonTrump[0];
+      if (difficulty === 'hard' && nonTrump.length > 1) {
+        // На харде — иногда оставляет более сильные не-козыри
+        chosen = nonTrump[0];
+      }
+    } else {
+      const botTrumps = botHand.filter(isTrump).length;
+      if (difficulty === 'easy') {
+        // На лёгком — просто бьёт козырем
+      } else if (botTrumps === 1 && deck.length > 4 && Math.random() < (difficulty === 'hard' ? 0.6 : 0.4)) {
+        // На харде чаще экономит последний козырь
+        botTake(); return;
+      }
+      chosen = trump[0];
+    }
+
+    const card = botHand.splice(chosen.idx, 1)[0];
+    lastUnbeaten.defend = card;
+    soundBeat();
+    render();
+    busy = false;
+    render();
+  }
+
+  function botTake() {
+    soundTake();
+    table.forEach(p => {
+      botHand.push(p.attack);
+      if (p.defend) botHand.push(p.defend);
+    });
+    table = [];
+    attacker = 'player';
+    sortHand(botHand);
+    showToast('БОТ ВЗЯЛ КАРТЫ', '#ffcc66');
+    render();
+
+    setTimeout(() => {
+      refillHands();
+      render();
+      if (checkEnd()) return;
+      busy = false;
+      render();
+    }, 500);
+  }
+
+  function botMaybeAdd() {
+    const ranksOnTable = new Set(
+      table.flatMap(p => [p.attack.rank, p.defend ? p.defend.rank : null]).filter(Boolean)
+    );
+    if (table.some(p => !p.defend)) { busy = false; render(); return; }
+
+    const candidates = [];
+    for (let i = 0; i < botHand.length; i++) {
+      if (ranksOnTable.has(botHand[i].rank) && botWantsToAdd(botHand[i])) candidates.push(i);
+    }
+
+    if (candidates.length === 0) {
+      table = [];
+      attacker = 'player';
+      render();
+      setTimeout(() => {
+        refillHands();
+        render();
+        if (checkEnd()) return;
+        busy = false;
+        render();
+      }, 500);
+      return;
+    }
+
+    candidates.sort((a, b) => {
+      const ca = botHand[a], cb = botHand[b];
+      return (ca.power + (isTrump(ca) ? 100 : 0)) - (cb.power + (isTrump(cb) ? 100 : 0));
+    });
+
+    const card = botHand.splice(candidates[0], 1)[0];
+    table.push({ attack: card, defend: null });
+    soundPlace();
+    showToast('БОТ ПОДКИНУЛ', '#ffcc66');
+    render(true);
+    busy = false;
+    render();
+  }
+
+  function botAttack() {
+    if (botHand.length === 0) { busy = false; return; }
+    const playerCardCount = playerHand.length;
+    let bestIdx = -1;
+    let bestScore = Infinity;
+
+    for (let i = 0; i < botHand.length; i++) {
+      const c = botHand[i];
+      let score = c.power + (isTrump(c) ? 100 : 0);
+
+      if (difficulty === 'easy') {
+        // На лёгком — просто младшая карта, без стратегии
+        score = c.power;
+      } else if (difficulty === 'hard') {
+        // На харде — умная стратегия
+        if (playerCardCount > 4) score += c.power * 0.5;
+        if (playerCardCount === 1 && isTrump(c)) score -= 50;
+        // На харде — если у игрока мало карт, стараемся кидать карты его слабых мастей
+        if (playerCardCount <= 2) {
+          const playerSuits = {};
+          playerHand.forEach(p => playerSuits[p.suitName] = (playerSuits[p.suitName] || 0) + 1);
+          if (playerSuits[c.suitName] === 1) score -= 10;
+        }
+      } else {
+        // Medium
+        if (playerCardCount > 4) score += c.power * 0.5;
+        if (playerCardCount === 1 && isTrump(c)) score -= 50;
+      }
+
+      if (score < bestScore) { bestScore = score; bestIdx = i; }
+    }
+
+    const card = botHand.splice(bestIdx, 1)[0];
+    table.push({ attack: card, defend: null });
+    soundPlace();
+    render(true);
+    busy = false;
+    render();
+  }
+
+  // ===== Добор =====
+  function refillHands() {
+    if (attacker === 'player') {
+      while (playerHand.length < 6 && deck.length > 0) playerHand.push(deck.pop());
+      while (botHand.length < 6 && deck.length > 0) botHand.push(deck.pop());
+    } else {
+      while (botHand.length < 6 && deck.length > 0) botHand.push(deck.pop());
+      while (playerHand.length < 6 && deck.length > 0) playerHand.push(deck.pop());
+    }
+    sortHand(playerHand);
+    sortHand(botHand);
+  }
+
+  // ===== Конец раунда =====
+  function checkEnd() {
+    if (playerHand.length === 0 && deck.length === 0) { endRound(true); return true; }
+    if (botHand.length === 0 && deck.length === 0) { endRound(false); return true; }
+    return false;
+  }
+
+  function endRound(playerWon) {
+    gameOver = true;
+    let oldRank = getRankTitle(stats.rating);
+
+    if (playerWon) {
+      stats.wins++;
+      stats.rating++;
+      stats.streak = (stats.streak || 0) + 1;
+      if (stats.streak > stats.bestStreak) stats.bestStreak = stats.streak;
+      soundWin();
+      if (!roundTookCards) stats.flagNoTake = true;
+      if (roundMoves <= 10) stats.flagFastWin = true;
+      if (difficulty === 'hard') stats.flagHardWin = true;
+    } else {
+      stats.losses++;
+      stats.rating = Math.max(0, stats.rating - 1);
+      stats.streak = 0;
+      soundLose();
+    }
+
+    let newRank = getRankTitle(stats.rating);
+
+    // Проверка достижений
+    const newlyUnlocked = [];
+    for (const a of ACHIEVEMENTS) {
+      if (!stats.unlocked[a.id] && a.check(stats)) {
+        stats.unlocked[a.id] = true;
+        newlyUnlocked.push(a);
+      }
+    }
+    if (newlyUnlocked.length > 0) setTimeout(() => soundAchv(), 800);
+
+    saveStats();
+
+    document.getElementById('endTitle').textContent = playerWon ? '🎉 ПОБЕДА!' : '😢 ПОРАЖЕНИЕ';
+    document.getElementById('endResult').textContent = playerWon ? 'БОТ — ДУРАК!' : 'ТЫ — ДУРАК...';
+    document.getElementById('endWins').textContent = stats.wins;
+    document.getElementById('endLosses').textContent = stats.losses;
+    document.getElementById('endRating').textContent = 'РЕЙТИНГ: ' + stats.rating;
+    document.getElementById('endRank').textContent = newRank;
+
+    const newRankLine = document.getElementById('newRankLine');
+    if (newRank !== oldRank && playerWon) {
+      newRankLine.style.display = 'block';
+      newRankLine.textContent = '🎉 НОВОЕ ЗВАНИЕ: ' + newRank;
+    } else { newRankLine.style.display = 'none'; }
+
+    const newAchvLine = document.getElementById('newAchvLine');
+    if (newlyUnlocked.length > 0) {
+      newAchvLine.style.display = 'block';
+      newAchvLine.textContent = '🏆 ' + newlyUnlocked.map(a => a.icon + ' ' + a.name).join(' • ');
+    } else { newAchvLine.style.display = 'none'; }
+
+    setTimeout(() => {
+      document.getElementById('endModal').classList.add('show');
+    }, 900);
+  }
+
+  // ===== Меню =====
+  function updateMenu() {
+    document.getElementById('menuRank').textContent = getRankTitle(stats.rating);
+    document.getElementById('menuRating').textContent = stats.rating;
+    document.getElementById('menuWins').textContent = stats.wins;
+    document.getElementById('menuLosses').textContent = stats.losses;
+    updateDifficultyUI();
+    updateMusicBtn();
+  }
+
+  function setDifficulty(d) {
+    difficulty = d;
+    stats.difficulty = d;
+    saveStats();
+    updateDifficultyUI();
+  }
+  function updateDifficultyUI() {
+    document.getElementById('diffEasy').classList.toggle('active', difficulty === 'easy');
+    document.getElementById('diffMedium').classList.toggle('active', difficulty === 'medium');
+    document.getElementById('diffHard').classList.toggle('active', difficulty === 'hard');
+  }
+
+  function startGame() {
+    initAudio();
+    startMusic();
+    document.getElementById('menuModal').classList.remove('show');
+    document.getElementById('endModal').classList.remove('show');
+    document.getElementById('carpetBg').style.display = 'none';
+    newGame();
+  }
+
+  function quitToMenu() {
+    gameOver = true; busy = false;
+    document.getElementById('endModal').classList.remove('show');
+    document.getElementById('carpetBg').style.display = 'block';
+    updateMenu();
+    document.getElementById('menuModal').classList.add('show');
+  }
+
+  // ===== Достижения =====
+  function openAchievements() {
+    const list = document.getElementById('achvList');
+    list.innerHTML = '';
+    for (const a of ACHIEVEMENTS) {
+      const unlocked = !!stats.unlocked[a.id];
+      const div = document.createElement('div');
+      div.className = 'achv ' + (unlocked ? 'unlocked' : 'locked');
+      div.innerHTML = `
+        <div class="icon">${a.icon}</div>
+        <div class="name">${a.name}</div>
+        <div class="check">${unlocked ? '✓' : '🔒'}</div>
+      `;
+      list.appendChild(div);
+    }
+    document.getElementById('menuModal').classList.remove('show');
+    document.getElementById('achvModal').classList.add('show');
+  }
+  function closeAchievements() {
+    document.getElementById('achvModal').classList.remove('show');
+    document.getElementById('menuModal').classList.add('show');
+  }
+
+  // ===== Новая игра =====
+  function newGame() {
+    deck = shuffle(createDeck());
+    trump = SUITS.find(s => s.name === deck[0].suitName);
+    playerHand = [];
+    botHand = [];
+    for (let i = 0; i < 6; i++) {
+      playerHand.push(deck.pop());
+      botHand.push(deck.pop());
+    }
+    sortHand(playerHand);
+    sortHand(botHand);
+
+    table = [];
+    selectedCard = null;
+    gameOver = false;
+    busy = false;
+    roundTookCards = false;
+    roundMoves = 0;
+    roundBeatenInOneAttack = 0;
+
+    const playerMinTrump = playerHand.filter(isTrump).sort((a,b) => a.power - b.power)[0];
+    const botMinTrump = botHand.filter(isTrump).sort((a,b) => a.power - b.power)[0];
+
+    if (playerMinTrump && (!botMinTrump || playerMinTrump.power < botMinTrump.power)) {
+      attacker = 'player';
+    } else if (botMinTrump) {
+      attacker = 'bot';
+    } else {
+      attacker = 'player';
+    }
+
+    render();
+
+    if (attacker === 'bot') {
+      busy = true;
+      botThink(() => botAttack(), 1800, '🤔 ДУМАЕТ...');
+    }
+  }
+
+  updateMenu();
+</script>
+
+</body>
+</html>
